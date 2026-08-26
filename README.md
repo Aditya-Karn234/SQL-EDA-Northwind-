@@ -82,6 +82,11 @@ table, as in `ORDER_DETAILS`).
 
 `"Order Details"` needs double-quoting in SQL since the table name contains a space.
 
+`analysis.sql` also creates one derived object, `OrderLineRevenue` — a view over `Order Details`
+that computes `UnitPrice * Quantity * (1 - Discount)` once as `LineRevenue`, so every revenue
+query joins against it instead of repeating that formula. It's created with
+`CREATE VIEW IF NOT EXISTS`, so re-running the script is safe.
+
 ## Repo Structure
 ```
 sql_eda_project/
