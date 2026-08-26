@@ -66,6 +66,11 @@ erDiagram
     }
 ```
 
+**Legend:** `||--o{` = one-to-many (one row on the `||` side relates to zero-or-more rows on the
+`o{` side) — e.g. one `CUSTOMERS` row relates to many `ORDERS` rows. `PK` = primary key,
+`FK` = foreign key, `PK,FK` = column is both (a composite key that's also a reference to another
+table, as in `ORDER_DETAILS`).
+
 | Table | Rows |
 |---|---|
 | `Customers` | 93 |
