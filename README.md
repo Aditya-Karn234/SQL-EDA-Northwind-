@@ -13,6 +13,70 @@ independent of a scripting language or dashboarding tool.
 `northwind.db` (SQLite) — 16,282 orders, 609,283 order line items, 93 customers, 77 products,
 9 employees, 8 categories.
 
+## Schema
+The database has 13 tables total; `analysis.sql` queries the 6 below. (Suppliers, Shippers,
+Territories, Regions, EmployeeTerritories, and two empty customer-demographics tables exist in
+the schema but aren't used in the analysis.)
+
+```mermaid
+erDiagram
+    CUSTOMERS ||--o{ ORDERS : places
+    EMPLOYEES ||--o{ ORDERS : handles
+    EMPLOYEES ||--o{ EMPLOYEES : "reports to"
+    ORDERS ||--o{ ORDER_DETAILS : contains
+    PRODUCTS ||--o{ ORDER_DETAILS : "line item"
+    CATEGORIES ||--o{ PRODUCTS : includes
+
+    CUSTOMERS {
+        string CustomerID PK
+        string CompanyName
+        string Country
+    }
+    ORDERS {
+        int OrderID PK
+        string CustomerID FK
+        int EmployeeID FK
+        date OrderDate
+        date RequiredDate
+        date ShippedDate
+    }
+    ORDER_DETAILS {
+        int OrderID PK,FK
+        int ProductID PK,FK
+        numeric UnitPrice
+        int Quantity
+        real Discount
+    }
+    PRODUCTS {
+        int ProductID PK
+        string ProductName
+        int CategoryID FK
+        int UnitsInStock
+        int ReorderLevel
+    }
+    CATEGORIES {
+        int CategoryID PK
+        string CategoryName
+    }
+    EMPLOYEES {
+        int EmployeeID PK
+        int ReportsTo FK
+        string FirstName
+        string LastName
+    }
+```
+
+| Table | Rows |
+|---|---|
+| `Customers` | 93 |
+| `Orders` | 16,282 |
+| `Order Details` | 609,283 |
+| `Products` | 77 |
+| `Categories` | 8 |
+| `Employees` | 9 |
+
+`"Order Details"` needs double-quoting in SQL since the table name contains a space.
+
 ## Repo Structure
 ```
 sql_eda_project/
