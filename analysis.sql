@@ -247,3 +247,95 @@ SELECT
 FROM Products
 WHERE UnitsInStock <= ReorderLevel AND Discontinued = 0
 ORDER BY UnitsInStock ASC;
+
+
+-- ============================================================
+-- SECTION 4: TRENDS OVER TIME
+-- ============================================================
+
+-- 4.1 Quarterly revenue trend with a trailing 4-quarter rolling total
+-- (smooths out the month-to-month noise seen in 3.4). Quarter is built
+-- as 'YYYY-Qn' from OrderDate; the string sorts chronologically since
+-- every label is the same length.
+WITH quarterly_revenue AS (
+    SELECT
+        strftime('%Y', o.OrderDate) || '-Q' ||
+            ((CAST(strftime('%m', o.OrderDate) AS INTEGER) - 1) / 3 + 1) AS quarter,
+        SUM(od.LineRevenue) AS revenue
+    FROM Orders o
+    JOIN OrderLineRevenue od ON o.OrderID = od.OrderID
+    GROUP BY quarter
+)
+SELECT
+    quarter,
+    ROUND(revenue, 2) AS revenue,
+    ROUND(
+        SUM(revenue) OVER (ORDER BY quarter ROWS BETWEEN 3 PRECEDING AND CURRENT ROW),
+    2) AS trailing_4q_revenue
+FROM quarterly_revenue
+ORDER BY quarter;
+
+-- 4.2 Category revenue by quarter, with each category's share of that
+-- quarter's total revenue (PARTITION BY, not used elsewhere in this script)
+-- — reveals whether the category mix is shifting, not just whether
+-- overall revenue is growing.
+WITH category_quarterly AS (
+    SELECT
+        strftime('%Y', o.OrderDate) || '-Q' ||
+            ((CAST(strftime('%m', o.OrderDate) AS INTEGER) - 1) / 3 + 1) AS quarter,
+        c.CategoryName,
+        SUM(od.LineRevenue) AS revenue
+    FROM Orders o
+    JOIN OrderLineRevenue od ON o.OrderID = od.OrderID
+    JOIN Products p ON od.ProductID = p.ProductID
+    JOIN Categories c ON p.CategoryID = c.CategoryID
+    GROUP BY quarter, c.CategoryName
+)
+SELECT
+    quarter,
+    CategoryName,
+    ROUND(revenue, 2) AS revenue,
+    ROUND(100.0 * revenue / SUM(revenue) OVER (PARTITION BY quarter), 2) AS pct_of_quarter_revenue
+FROM category_quarterly
+ORDER BY quarter, revenue DESC;
+
+-- 4.3 Quarterly revenue trend for the top 5 products by lifetime revenue
+-- (see 3.1), with each one's share of that quarter's TOTAL company
+-- revenue — shows whether reliance on Cote de Blaye is growing or
+-- shrinking over time, not just that it's #1 today.
+WITH top_products AS (
+    SELECT ProductID
+    FROM OrderLineRevenue
+    GROUP BY ProductID
+    ORDER BY SUM(LineRevenue) DESC
+    LIMIT 5
+),
+quarterly_total AS (
+    SELECT
+        strftime('%Y', o.OrderDate) || '-Q' ||
+            ((CAST(strftime('%m', o.OrderDate) AS INTEGER) - 1) / 3 + 1) AS quarter,
+        SUM(od.LineRevenue) AS total_revenue
+    FROM Orders o
+    JOIN OrderLineRevenue od ON o.OrderID = od.OrderID
+    GROUP BY quarter
+),
+product_quarterly AS (
+    SELECT
+        strftime('%Y', o.OrderDate) || '-Q' ||
+            ((CAST(strftime('%m', o.OrderDate) AS INTEGER) - 1) / 3 + 1) AS quarter,
+        p.ProductName,
+        SUM(od.LineRevenue) AS revenue
+    FROM Orders o
+    JOIN OrderLineRevenue od ON o.OrderID = od.OrderID
+    JOIN Products p ON od.ProductID = p.ProductID
+    WHERE od.ProductID IN (SELECT ProductID FROM top_products)
+    GROUP BY quarter, p.ProductName
+)
+SELECT
+    pq.quarter,
+    pq.ProductName,
+    ROUND(pq.revenue, 2) AS revenue,
+    ROUND(100.0 * pq.revenue / qt.total_revenue, 2) AS pct_of_company_revenue
+FROM product_quarterly pq
+JOIN quarterly_total qt ON pq.quarter = qt.quarter
+ORDER BY pq.quarter, pq.revenue DESC;

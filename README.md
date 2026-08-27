@@ -90,7 +90,7 @@ query joins against it instead of repeating that formula. It's created with
 ## Repo Structure
 ```
 sql_eda_project/
-├── analysis.sql        # full annotated SQL script (cleaning -> EDA -> insights)
+├── analysis.sql        # full annotated SQL script (cleaning -> EDA -> insights -> trends)
 ├── northwind.db         # SQLite database
 ├── run_queries.py       # runs every query in analysis.sql and prints results
 └── README.md
@@ -145,13 +145,31 @@ name-based lookup or manual reporting.
 - **8 customers** have gone 60+ days without ordering (average customer order gap is only
   ~27 days), flagging them as re-engagement targets — led by FISSA Fabrica Inter. Salchichas S.A.
   at 169 days
-- **15 active products are at or below their reorder level**, including Gorgonzola Telino
-  (0 units in stock, 70 on order) — a concrete restocking-priority list
+- **18 active products are at or below their reorder level**, including Gorgonzola Telino
+  (0 units in stock, 70 on order) — a concrete restocking-priority list. (Query 3.7 has no
+  `LIMIT`; `run_queries.py` prints only the first 15 rows of any result, so the true count is
+  18, not 15 — worth remembering if a resume bullet or summary ever quotes the printed output
+  instead of `COUNT(*)`.)
+
+## Section 4 — Trends Over Time
+- **Quarterly revenue is essentially flat, not growing:** a trailing 4-quarter rolling total
+  (`SUM() OVER (... ROWS BETWEEN 3 PRECEDING AND CURRENT ROW)`) has stayed in a narrow
+  $38M–$42M band from 2013 through 2023 — the month-to-month swings in Section 3 are noise
+  around a plateau, not an actual growth or decline trend. (2023-Q4 is a partial quarter — the
+  dataset ends mid-quarter — so its lower raw total isn't a real drop.)
+- **Category mix has barely shifted in a decade:** Beverages' share of quarterly revenue has
+  stayed in a tight 19.4%–22.1% band since 2012 (via `SUM() OVER (PARTITION BY quarter)`) — the
+  category ranking in Section 2 isn't a snapshot, it's a decade-long structural pattern.
+- **Côte de Blaye's dominance is structural, not worsening:** its share of *total company*
+  revenue has held steady in the 10.5%–13.3% range every quarter since 2012 — the
+  single-point-of-failure risk flagged in Section 3 isn't accelerating, but it also isn't
+  resolving itself over time.
 
 ## Suggested Resume Bullets
 - Performed SQL-only data cleaning and EDA on a 609K-row relational order database, identifying
   data-quality issues including duplicate customer records and 3,755 late shipments (23% of orders).
-- Wrote CTE- and window-function-based queries (RANK, LAG) to build customer/employee revenue
-  leaderboards and month-over-month growth analysis across $448M in order revenue.
+- Wrote CTE- and window-function-based queries (RANK, LAG, PARTITION BY, rolling window frames)
+  to build customer/employee revenue leaderboards, quarterly trend analysis, and a rolling
+  4-quarter revenue total across $448M in order revenue.
 - Built a churn-risk and stockout-risk query set, surfacing 8 at-risk customer accounts and
-  15 products below reorder threshold for operational follow-up.
+  18 products below reorder threshold for operational follow-up.
